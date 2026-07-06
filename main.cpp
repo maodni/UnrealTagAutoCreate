@@ -17,6 +17,16 @@ namespace {
     using std::string;
 }
 
+
+struct TagInfo {
+    string tagName;
+    string tagComment;
+    TagInfo() {}
+
+    TagInfo(string &inTagName, string &inTagComment) : tagName(std::move(inTagName)
+                                                       ), tagComment(std::move(inTagComment)) {}
+};
+
 int main() {
 #ifdef _WIN32
     // 强制 Windows 控制台输入输出使用 UTF-8 编码
@@ -56,15 +66,34 @@ int main() {
     // cin.ignore();
 
     fs::path tagPath = inputTagConfig;
-    std::vector<string> tagsList;
+    std::vector<TagInfo> tagsList;
     if (fs::exists(tagPath) && !fs::is_directory(tagPath)) {
         std::ifstream file(tagPath);
         string line;
         while (std::getline(file, line)) {
-            std::cout << line << "\n";
+            if (line[0] == '+') {
+                // std::cout << line << "\n";
+                //拿到标签和说明内容
+                auto leftIndex = line.find('(');
+                auto rightIndex = line.find(')');
+                auto str = line.substr(leftIndex + 1, rightIndex - leftIndex - 1);
+                auto dotIndex = str.find(",");
+                auto tagStr = str.substr(0, dotIndex);
+                auto commentStr = str.substr(dotIndex + 1, str.size() - dotIndex);
+                auto tagIndex = tagStr.find("=");
+                auto tagRes = tagStr.substr(tagIndex + 1, tagStr.size() - tagIndex);
+                // std::cout << tagRes << "\n";
+                auto commentIndex = commentStr.find("=");
+                auto commentRes = commentStr.substr(commentIndex + 1, commentStr.size() - commentIndex);
+                // std::cout << commentRes << "\n";
+                TagInfo info(tagRes, commentRes);
+                tagsList.push_back(info);
+            }
         }
     }
-
+    for (const auto &pair: tagsList) {
+        std::cout << pair.tagName << "---" << pair.tagComment << "\n";
+    }
 
     std::cout << "input any key exit..." << "\n";
     _getch();
