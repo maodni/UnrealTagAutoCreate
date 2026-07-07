@@ -33,6 +33,8 @@ set(SOURCES
 )
 
 set(HEADERS
+        source/tag_read_print.cpp
+        source/tag_read_print.h
 )
 
 # ---------------------------------------------------------------------------

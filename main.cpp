@@ -7,7 +7,8 @@
 #define NOMINMAX
 #include <windows.h>
 #endif
-
+#include <nlohmann/json.hpp>
+#include "source/tag_read_print.h"
 
 namespace fs = std::filesystem;
 
@@ -15,17 +16,9 @@ namespace {
     using std::cout;
     using std::cin;
     using std::string;
+    using nlohmann::json;
 }
 
-
-struct TagInfo {
-    string tagName;
-    string tagComment;
-    TagInfo() {}
-
-    TagInfo(string &inTagName, string &inTagComment) : tagName(std::move(inTagName)
-                                                       ), tagComment(std::move(inTagComment)) {}
-};
 
 int main() {
 #ifdef _WIN32
@@ -33,27 +26,50 @@ int main() {
     SetConsoleCP(65001);
     SetConsoleOutputCP(65001);
 #endif
+
     string inputTagConfig;
+    string outputHeadFilePath;
+    string outputSourceFilePath;
+    TagReadPrint trp;
     bool readFile = false;
     {
         std::ifstream file("./data.json");
-        string line;
-        while (std::getline(file, line)) {
-            inputTagConfig = line;
-            if (!readFile) {
+        if (file.is_open()) {
+            json j = json::parse(file);
+            if (!j.empty()) {
+                inputTagConfig = j["inputTagConfig"];
+                outputHeadFilePath = j["outputHeadFilePath"];
+                outputSourceFilePath = j["outputSourceFilePath"];
+                trp.SetInputTagConfig(inputTagConfig);
+                trp.SetOutputHeadFilePath(outputHeadFilePath);
+                trp.SetOutputSourceFilePath(outputSourceFilePath);
                 readFile = true;
             }
         }
     }
+    std::cout << inputTagConfig << "\n";
     if (!readFile) {
         std::cout << "input tag config:" << "\n";
         cin >> inputTagConfig;
+        trp.SetInputTagConfig(inputTagConfig);
+        cin.ignore();
+        std::cout << "input out Head file:" << "\n";
+        cin >> outputHeadFilePath;
+        trp.SetOutputHeadFilePath(outputHeadFilePath);
+        cin.ignore();
+        std::cout << "input out source file:" << "\n";
+        cin >> outputSourceFilePath;
+        trp.SetOutputSourceFilePath(outputSourceFilePath);
         cin.ignore();
     }
 
     if (!readFile) {
-        std::ofstream file("./data.json");
-        file << inputTagConfig;
+        // file << inputTagConfig;
+        json j;
+        j["inputTagConfig"] = trp.GetInputTagConfig();
+        j["outputHeadFilePath"] = trp.GetOutputHeadFilePath();
+        j["outputSourceFilePath"] = trp.GetOutputSourceFilePath();
+        std::ofstream("data.json") << j.dump(4);
     }
 
     // std::cout << "input head file:" << "\n";
@@ -65,8 +81,8 @@ int main() {
     // cin >> inputCppFile;
     // cin.ignore();
 
-    fs::path tagPath = inputTagConfig;
-    std::vector<TagInfo> tagsList;
+    fs::path tagPath = trp.GetInputTagConfig();
+
     if (fs::exists(tagPath) && !fs::is_directory(tagPath)) {
         std::ifstream file(tagPath);
         string line;
@@ -77,23 +93,22 @@ int main() {
                 auto leftIndex = line.find('(');
                 auto rightIndex = line.find(')');
                 auto str = line.substr(leftIndex + 1, rightIndex - leftIndex - 1);
-                auto dotIndex = str.find(",");
+                auto dotIndex = str.find(',');
                 auto tagStr = str.substr(0, dotIndex);
                 auto commentStr = str.substr(dotIndex + 1, str.size() - dotIndex);
-                auto tagIndex = tagStr.find("=");
+                auto tagIndex = tagStr.find('=');
                 auto tagRes = tagStr.substr(tagIndex + 1, tagStr.size() - tagIndex);
                 // std::cout << tagRes << "\n";
-                auto commentIndex = commentStr.find("=");
+                auto commentIndex = commentStr.find('=');
                 auto commentRes = commentStr.substr(commentIndex + 1, commentStr.size() - commentIndex);
                 // std::cout << commentRes << "\n";
                 TagInfo info(tagRes, commentRes);
-                tagsList.push_back(info);
+                trp.AddTag(info);
             }
         }
     }
-    for (const auto &pair: tagsList) {
-        std::cout << pair.tagName << "---" << pair.tagComment << "\n";
-    }
+    trp.PrintHeadFile();
+    trp.PrintSourceFile();
 
     std::cout << "input any key exit..." << "\n";
     _getch();
