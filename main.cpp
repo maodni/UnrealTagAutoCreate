@@ -92,15 +92,15 @@ int main() {
                 //拿到标签和说明内容
                 auto leftIndex = line.find('(');
                 auto rightIndex = line.find(')');
-                auto str = line.substr(leftIndex + 1, rightIndex - leftIndex - 1);
+                auto str = line.substr(leftIndex + 1, rightIndex - leftIndex - 2);
                 auto dotIndex = str.find(',');
-                auto tagStr = str.substr(0, dotIndex);
+                auto tagStr = str.substr(0, dotIndex - 1);
                 auto commentStr = str.substr(dotIndex + 1, str.size() - dotIndex);
                 auto tagIndex = tagStr.find('=');
-                auto tagRes = tagStr.substr(tagIndex + 1, tagStr.size() - tagIndex);
+                auto tagRes = tagStr.substr(tagIndex + 2, tagStr.size() - tagIndex + 1);
                 // std::cout << tagRes << "\n";
                 auto commentIndex = commentStr.find('=');
-                auto commentRes = commentStr.substr(commentIndex + 1, commentStr.size() - commentIndex);
+                auto commentRes = commentStr.substr(commentIndex + 2, commentStr.size() - commentIndex);
                 // std::cout << commentRes << "\n";
                 TagInfo info(tagRes, commentRes);
                 trp.AddTag(info);

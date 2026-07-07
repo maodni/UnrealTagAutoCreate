@@ -13,23 +13,31 @@ namespace {
     using std::string;
 
 
-    void G_ReplaceAll(std::string &str,
-                      const std::string &oldValue,
-                      const std::string &newValue) {
+    string G_ReplaceAll(std::string &str,
+                        const std::string &oldValue,
+                        const std::string &newValue) {
         size_t pos = 0;
-
-        while ((pos = str.find(oldValue, pos)) != std::string::npos) {
-            str.replace(pos, oldValue.length(), newValue);
+        string result = str;
+        while ((pos = result.find(oldValue, pos)) != std::string::npos) {
+            result.replace(pos, oldValue.length(), newValue);
             pos += newValue.length();
         }
+        return result;
     }
 
     std::string G_GetHeadFileName(std::string &str) {
         std::string tempStr;
-        auto index1 = str.rfind("\\");
-        auto index2 = str.rfind(".");
-        tempStr = str.substr(index1 + 1, index2 - index1 - 1);
-        return tempStr;
+        //排除private长度
+        auto index = str.find("Private") + 7;
+        //排除后缀
+        auto index2 = str.size() - 4;
+        if (index != std::string::npos) {
+            tempStr = str.substr(index, index2 - index);
+            size_t pos = 0;
+            tempStr = G_ReplaceAll(tempStr, "\\\\", "/");
+            tempStr = tempStr.substr(1, tempStr.size() - 1);
+            return tempStr;
+        }
     }
 }
 
@@ -73,15 +81,16 @@ void TagReadPrint::PrintHeadFile() {
     file.open(outputHeadFilePath, std::ios::out | std::ios::ate | std::ios::trunc);
     file << "#pragma once" << "\n";
     file << "#include \"CoreMinimal.h\"" << "\n";
+    file << "#include \"NativeGameplayTags.h\"" << "\n";
     file << "namespace GameplayTags{" << "\n";
     std::string tempTitle = "";
     for (int i = 0; i < cacheTagsList.size(); ++i) {
         size_t pos = 0;
         std::string str = cacheTagsList[i].tagName;
-        G_ReplaceAll(str, ".", "_");
-        auto leftIndex = str.find('_');
-        auto rightIndex = str.rfind('_');
-        std::string tempStr = str.substr(leftIndex, rightIndex - leftIndex);
+        auto tempRes = G_ReplaceAll(str, ".", "_");
+        auto leftIndex = tempRes.find('_');
+        auto rightIndex = tempRes.rfind('_');
+        std::string tempStr = tempRes.substr(leftIndex, rightIndex - leftIndex);
         if (tempTitle != tempStr) {
             tempTitle = tempStr;
             file << "\n//-------------";
@@ -89,7 +98,7 @@ void TagReadPrint::PrintHeadFile() {
             file << "\n";
         }
 
-        file << "UE_DECLARE_GAMEPLAY_TAG_EXTERN(" + str + ");" + "\n";
+        file << "UE_DECLARE_GAMEPLAY_TAG_EXTERN(" + tempRes + ")" + "\n";
     }
     file << "\n}" << "\n";
     file.close();
@@ -98,17 +107,16 @@ void TagReadPrint::PrintHeadFile() {
 void TagReadPrint::PrintSourceFile() {
     std::ofstream file;
     file.open(outputSourceFilePath, std::ios::out | std::ios::ate | std::ios::trunc);;
-    file << "#include \"" << G_GetHeadFileName(outputHeadFilePath) << ".cpp\"\n";
+    file << "#include \"" << G_GetHeadFileName(outputSourceFilePath) << ".h\"\n";
     file << "namespace GameplayTags {" << "\n";
     std::string tempTitle;
 
     for (int i = 0; i < cacheTagsList.size(); ++i) {
-        size_t pos = 0;
         std::string str = cacheTagsList[i].tagName;
-        G_ReplaceAll(str, ".", "_");
-        auto leftIndex = str.find('_');
-        auto rightIndex = str.rfind('_');
-        std::string tempStr = str.substr(leftIndex, rightIndex - leftIndex);
+        auto tempRes = G_ReplaceAll(str, ".", "_");
+        auto leftIndex = str.find('.');
+        auto leftSecondIndex = str.find('.', leftIndex);
+        std::string tempStr = str.substr(0, leftSecondIndex);
         if (tempTitle != tempStr) {
             tempTitle = tempStr;
             file << "\n//-------------";
@@ -116,7 +124,9 @@ void TagReadPrint::PrintSourceFile() {
             file << "\n";
         }
 
-        file << "UE_DEFINE_GAMEPLAY_TAG_COMMENT(" + str + ", " + cacheTagsList[i].tagComment + ");" + "\n";
+        file << "UE_DEFINE_GAMEPLAY_TAG_COMMENT(" + tempRes + ", \"";
+        file << str + "\" , \"" + cacheTagsList[i].tagComment + "\");" + "\n";
+        std::cout << "=======" << i << "/" << cacheTagsList.size() << "\r";
     }
     file << "\n}" << "\n";
     file.close();
