@@ -48,7 +48,21 @@ std::vector<TagInfo> TagReadPrint::GetTagsList() {
 }
 
 void TagReadPrint::AddTag(TagInfo &info) {
-    cacheTagsList.push_back(std::move(info));
+    auto tempRes = G_ReplaceAll(info.tagName, ".", "_");
+    auto leftIndex = 0;
+    leftIndex = tempRes.find('_');
+    auto rightIndex = 0;
+    rightIndex = tempRes.find('_', leftIndex + 1);
+    std::string tempStr = tempRes;
+    if (leftIndex > 0 && rightIndex > 0) {
+        tempStr = tempStr.substr(0, rightIndex);
+    }
+    auto pairIt = cacheTagsMap.find(tempStr);
+    if (pairIt != cacheTagsMap.end()) {
+        pairIt->second.push_back(info);
+    } else {
+        cacheTagsMap[tempStr].push_back(info);
+    }
 }
 
 std::string TagReadPrint::GetInputTagConfig() const {
@@ -84,22 +98,22 @@ void TagReadPrint::PrintHeadFile() {
     file << "#include \"NativeGameplayTags.h\"" << "\n";
     file << "namespace GameplayTags{" << "\n";
     std::string tempTitle = "";
-    for (int i = 0; i < cacheTagsList.size(); ++i) {
-        size_t pos = 0;
-        std::string str = cacheTagsList[i].tagName;
-        auto tempRes = G_ReplaceAll(str, ".", "_");
-        auto leftIndex = tempRes.find('_');
-        auto rightIndex = tempRes.rfind('_');
-        std::string tempStr = tempRes.substr(leftIndex, rightIndex - leftIndex);
-        if (tempTitle != tempStr) {
-            tempTitle = tempStr;
+    int writeCount = 0;
+    for (auto pair: cacheTagsMap) {
+        if (tempTitle != pair.first) {
+            tempTitle = pair.first;
             file << "\n//-------------";
-            file << tempStr;
+            file << pair.first;
             file << "\n";
         }
-
-        file << "UE_DECLARE_GAMEPLAY_TAG_EXTERN(" + tempRes + ")" + "\n";
+        for (auto &it: pair.second) {
+            auto tempStr = G_ReplaceAll(it.tagName, ".", "_");
+            file << "UE_DECLARE_GAMEPLAY_TAG_EXTERN(" + tempStr + ")" + "\n";
+            writeCount++;
+        }
     }
+    std::cout << "写入头文件: " << writeCount << " 个 " << "\n";
+    std::cout.flush();
     file << "\n}" << "\n";
     file.close();
 }
@@ -110,24 +124,26 @@ void TagReadPrint::PrintSourceFile() {
     file << "#include \"" << G_GetHeadFileName(outputSourceFilePath) << ".h\"\n";
     file << "namespace GameplayTags {" << "\n";
     std::string tempTitle;
+    int writeCount = 0;
 
-    for (int i = 0; i < cacheTagsList.size(); ++i) {
-        std::string str = cacheTagsList[i].tagName;
-        auto tempRes = G_ReplaceAll(str, ".", "_");
-        auto leftIndex = str.find('.');
-        auto leftSecondIndex = str.find('.', leftIndex);
-        std::string tempStr = str.substr(0, leftSecondIndex);
-        if (tempTitle != tempStr) {
-            tempTitle = tempStr;
+    for (auto pair: cacheTagsMap) {
+        if (tempTitle != pair.first) {
+            tempTitle = pair.first;
             file << "\n//-------------";
-            file << tempStr;
+            file << pair.first;
             file << "\n";
         }
+        for (auto &it: pair.second) {
+            auto tempStr = G_ReplaceAll(it.tagName, ".", "_");
+            file << "UE_DEFINE_GAMEPLAY_TAG_COMMENT(" + tempStr + ", \"";
+            file << it.tagName + "\" , \"" + it.tagComment + "\");" + "\n";
 
-        file << "UE_DEFINE_GAMEPLAY_TAG_COMMENT(" + tempRes + ", \"";
-        file << str + "\" , \"" + cacheTagsList[i].tagComment + "\");" + "\n";
-        std::cout << "=======" << i << "/" << cacheTagsList.size() << "\r";
+            writeCount++;
+            std::cout << "写入源文件: " << writeCount << " 个 " << "\r";
+        }
     }
+    std::cout << "写入源文件: " << writeCount << " 个 " << "\n";
+    std::cout.flush();
     file << "\n}" << "\n";
     file.close();
 }

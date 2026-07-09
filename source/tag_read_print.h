@@ -4,6 +4,7 @@
 
 #ifndef UNREALTAGAUTOCREATE_TAG_READ_PRINT_H
 #define UNREALTAGAUTOCREATE_TAG_READ_PRINT_H
+#include <map>
 #include <string>
 #include <vector>
 
@@ -47,6 +48,8 @@ private:
     std::string outputSourceFilePath;
 
     std::vector<TagInfo> cacheTagsList;
+
+    std::map<std::string, std::vector<TagInfo> > cacheTagsMap;
 };
 
 

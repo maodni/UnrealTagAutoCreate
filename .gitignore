@@ -40,3 +40,5 @@ reasonix.toml
 # Project data (runtime-generated)
 # ============================================================================
 data.json
+source/Private
+test.ini

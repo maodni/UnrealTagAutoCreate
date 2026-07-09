@@ -82,12 +82,12 @@ int main() {
     // cin.ignore();
 
     fs::path tagPath = trp.GetInputTagConfig();
-
+    int gatherNumber = 0;
     if (fs::exists(tagPath) && !fs::is_directory(tagPath)) {
         std::ifstream file(tagPath);
         string line;
         while (std::getline(file, line)) {
-            if (line[0] == '+') {
+            if (!line.empty() && line[0] == '+') {
                 // std::cout << line << "\n";
                 //拿到标签和说明内容
                 auto leftIndex = line.find('(');
@@ -104,9 +104,14 @@ int main() {
                 // std::cout << commentRes << "\n";
                 TagInfo info(tagRes, commentRes);
                 trp.AddTag(info);
+                gatherNumber++;
+                std::cout << "收集到信息: " << gatherNumber << " 个 " << "\r";
+                Sleep(100.0);
             }
         }
     }
+    std::cout << "\n";
+
     trp.PrintHeadFile();
     trp.PrintSourceFile();
 
